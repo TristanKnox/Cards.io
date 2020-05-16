@@ -1,0 +1,169 @@
+
+<canvas id='ctx' width="500" height="500" style="boarder:ipx solid #000000;"></canvas>
+<script src="https://cdn.socket.io/socket.io-1.4.5.js"></script>
+
+
+
+<script>
+    // var Card = require('./server/Card.js');
+    var winWidth = window.innerWidth;
+	var winHeight = window.innerHeight;
+	var ctx = document.getElementById("ctx").getContext("2d");
+	ctx.canvas.width = winWidth;
+	ctx.canvas.height = winHeight;
+	ctx.font = '30px Arial';
+	var canvasColor = 'darkgray';
+
+	var socket = io();
+
+	//Update Screen Event
+	socket.on('draw', function(data){
+
+		prepCanvase();
+		playerInfo = data.playerPackets;
+		for(i = 0; i < playerInfo.length; i++){
+			ctx.fillText(playerInfo[i].name, playerInfo[i].x, playerInfo[i].y);
+			drawCard(playerInfo[i].imgSrc, playerInfo[i].x, playerInfo[i].y);
+		}
+
+        drawRectangle(200, 100, 50, 100,5,'blue',true,true,transparency=.8);
+		drawCards(data.cards,withShadow=false);
+        drawCards(data.cardsInMotion,withShadow=true);
+
+
+	});
+
+	//Mouse Click Event
+	document.onmousedown = function(event){
+		pos = getMousPostition(event);
+		if(event.button === 0)
+			socket.emit('mouseDown',{'inputId':'mouse0', state:true, pos:pos});
+		if(event.button === 1)
+			socket.emit('mouseDown',{'inputId':'mouse1', state:true, pos:pos});
+		if(event.button === 2)
+			socket.emit('mouseDown',{'inputId':'mouse2', state:true, pos:pos});
+	}
+
+	document.onmouseup = function(event){
+		pos = getMousPostition(event);
+		if(event.button === 0)
+			socket.emit('mouseDown',{'inputId':'mouse0', state:false, pos:pos});
+		if(event.button === 1)
+			socket.emit('mouseDown',{'inputId':'mouse1', state:false, pos:pos});
+		if(event.button === 2)
+			socket.emit('mouseDown',{'inputId':'mouse2', state:false, pos:pos});
+	}
+
+	document.onmousemove = function(event){
+		socket.emit('mouseMove', getMousPostition(event));
+	}
+
+    function prepCanvase() {
+        ctx.fillStyle = canvasColor;
+        ctx.clearRect(0,0,winWidth,winHeight);
+        ctx.fillRect(0,0,winWidth, winHeight);
+    }
+
+	function getMousPostition(event){
+		var x = event.clientX;
+		var y = event.clientY;
+		pos = {x:x, y:y};
+		return pos;
+	}
+
+	function drawCards(cards, withShadow){
+        for(i = 0; i < cards.length; i++){
+            card = cards[i];
+            drawCard(card.img, card.x, card.y, card.width, card.height, card.color, withShadow);
+        }
+    }
+
+	function drawCard(imageSrc, x, y, cardWidth, cardHeight, outlineColor, withShadow){
+		var width = cardWidth;
+		var height = cardHeight;
+		var image = new Image();
+		image.src = imageSrc;
+		ctx.fillStyle = 'black';
+		// ctx.fillRect(x-(width+4)/2,y-(height+4)/2, width+4, height+4)
+        if(withShadow)
+            drawRectangle(x-10, y+10,width,height,9,'black',false,true,.75);
+		drawCardOutline(x,y,width, height, outlineColor);
+		ctx.drawImage(image,x-width/2,y-height/2, width, height);
+	}
+
+	function drawCardOutline(xPos, yPos, cardWidth, cardHeight, color){
+		var defaultRadius = 5;
+		var outlineWeight = 4;
+		var radius = defaultRadius + outlineWeight;
+		drawRectangle(xPos,yPos,cardWidth+outlineWeight,cardHeight+outlineWeight,radius,color,true,true,1);
+		// var tl = {
+		// 	x:xPos-cardWidth/2-outlineWeight,
+		// 	y:yPos-cardHeight/2-outlineWeight
+		// };
+		// var tr = {
+		// 	x:xPos+cardWidth/2+outlineWeight,
+		// 	y:yPos-cardHeight/2-outlineWeight
+		// };
+		// var bl = {
+		// 	x:xPos-cardWidth/2-outlineWeight,
+		// 	y:yPos+cardHeight/2+outlineWeight
+		// };
+		// var br = {
+		// 	x:xPos+cardWidth/2+outlineWeight,
+		// 	y:yPos+cardHeight/2+outlineWeight
+		// };
+		//
+		//  ctx.beginPath();
+		//  ctx.moveTo(tl.x, tl.y+radius);
+		//  ctx.lineTo(bl.x, bl.y-radius);
+		//  ctx.quadraticCurveTo(bl.x, bl.y, bl.x+radius, bl.y);
+		//  ctx.lineTo(br.x-radius, br.y);
+		//  ctx.quadraticCurveTo(br.x, br.y, br.x, br.y-radius);
+		//  ctx.lineTo(tr.x, tr.y+radius);
+		//  ctx.quadraticCurveTo(tr.x, tr.y, tr.x-radius, tr.y);
+		//  ctx.lineTo(tl.x+radius, tl.y);
+		//  ctx.quadraticCurveTo(tl.x, tl.y, tl.x, tl.y+radius);
+		//  ctx.closePath();
+		//  ctx.stroke();
+		//  ctx.fillStyle = color;
+		//  ctx.fill();
+	}
+
+	function drawRectangle(xPos, yPos, width, height, radius, color, stroke, fill, transparency){
+        var tl = {
+            x:xPos-width/2,
+            y:yPos-height/2
+        };
+        var tr = {
+            x:xPos+width/2,
+            y:yPos-height/2
+        };
+        var bl = {
+            x:xPos-width/2,
+            y:yPos+height/2
+        };
+        var br = {
+            x:xPos+width/2,
+            y:yPos+height/2
+        };
+        ctx.globalAlpha = transparency;
+        ctx.beginPath();
+        ctx.moveTo(tl.x, tl.y+radius);
+        ctx.lineTo(bl.x, bl.y-radius);
+        ctx.quadraticCurveTo(bl.x, bl.y, bl.x+radius, bl.y);
+        ctx.lineTo(br.x-radius, br.y);
+        ctx.quadraticCurveTo(br.x, br.y, br.x, br.y-radius);
+        ctx.lineTo(tr.x, tr.y+radius);
+        ctx.quadraticCurveTo(tr.x, tr.y, tr.x-radius, tr.y);
+        ctx.lineTo(tl.x+radius, tl.y);
+        ctx.quadraticCurveTo(tl.x, tl.y, tl.x, tl.y+radius);
+        ctx.closePath();
+        if(stroke)
+            ctx.stroke();
+        if(fill) {
+            ctx.fillStyle = color;
+            ctx.fill();
+        }
+        ctx.globalAlpha = 1.0;
+    }
+</script>
