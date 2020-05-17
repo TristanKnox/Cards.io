@@ -1,5 +1,5 @@
 
-
+var DEBUG = true;
 var express = require('express');
 var app = express();
 var serv = require('http').Server(app);
@@ -41,14 +41,29 @@ io.sockets.on('connection', function(socket){
 	var player = new Player(socket.id, 'Tristan');
 	table.addPlayer(player);
 	PLAYER_LIST[socket.id] = player;
-	console.log(player.getPlayerColor());
 
-	console.log('socket connection');
+
 	//Handel disconnect
 	socket.on('disconnect', function(){
 		delete SOCKET_LIST[socket.id];
 		delete PLAYER_LIST[socket.id];
-	})
+	});
+
+	socket.on('chatInput',function (data) {
+		var playerName = player.getName();
+		var playerColor = player.getPlayerColor();
+		var chatPacket = {name:playerName, msg:data, color:playerColor}
+		broacast('addToChat',chatPacket)
+	});
+
+	socket.on('eval',function(data){
+		if(!DEBUG)
+			return;
+		console.log('eval request:' + data);
+		var res = eval(data);
+		console.log(res);
+		socket.emit('evalResponse', res);
+	});
 
 	socket.on('mouseDown', function(data){
 
@@ -101,11 +116,19 @@ setInterval(function(){
 	// console.log(cardsInMotion);
 	// Finalize packet and send to every player
 	var packet = {playerPackets: playrPacket, cards: cardsToDraw, cardsInMotion: cardsInMotion};
-	for(var i in SOCKET_LIST){
-		var socket = SOCKET_LIST[i];
-		socket.emit('draw',packet);
-	}
+	// for(var i in SOCKET_LIST){
+	// 	var socket = SOCKET_LIST[i];
+	// 	socket.emit('draw',packet);
+	// }
+	broacast('draw', packet)
 
 	
 	//Sets fps 25
 }, 1000/25);
+
+function broacast(key, packet) {
+	for(var i in SOCKET_LIST){
+		var socket = SOCKET_LIST[i];
+		socket.emit(key,packet);
+	}
+}

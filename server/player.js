@@ -13,7 +13,7 @@ class Player{
 		this.y = 0;
 		this.cardHeld = null;
 	}
-
+	getName(){return this.name; }
 	setCardHeld(card){
 		if(card != null)
 			card.pickUP(this.mousePostion);

@@ -1,17 +1,32 @@
+<body onresize="initView()">
+    <canvas id='table' width="500" height="500" style="boarder:ipx solid #000000;"></canvas>
+    <canvas id="overlay" style="position: absolute;left: 0px;top:0px;z-index: 1"></canvas>
+    <div style="float:left">
+        <canvas id="player-hand" style="boarder:ipx solid #000000;"></canvas>
+    </div>
+    <div id="chat-div">
+        <div id="chat-box" style="overflow-y:scroll">
+            <div>Welcome To The Game</div>
+        </div>
+        <form id="chat-form">
+            <input id="chat-input" type="text" style="width:500px"></input>
+        </form>
+    </div>
+</body>
 
-<canvas id='ctx' width="500" height="500" style="boarder:ipx solid #000000;"></canvas>
+
+
 <script src="https://cdn.socket.io/socket.io-1.4.5.js"></script>
 
-
-
 <script>
-    // var Card = require('./server/Card.js');
-    var winWidth = window.innerWidth;
-	var winHeight = window.innerHeight;
-	var ctx = document.getElementById("ctx").getContext("2d");
-	ctx.canvas.width = winWidth;
-	ctx.canvas.height = winHeight;
-	ctx.font = '30px Arial';
+	var tableHeight = .8;
+	var tableWidth = 1;
+	let chatWidth = .4;
+
+    const ctx = initCanvase('table',tableWidth,tableHeight);
+    var chatBox = initChat(chatWidth,1-tableHeight);
+	var handCtx = initCanvase('player-hand',1-chatWidth,1-tableHeight)
+
 	var canvasColor = 'darkgray';
 
 	var socket = io();
@@ -32,6 +47,27 @@
 
 
 	});
+
+	socket.on('addToChat', function (data) {
+	    var name = '<div style="float:left;color:'+ data.color + '">' + data.name + '</div>';
+        // chatText.innerHTML += '<div>' + name + ': ' + data.msg + '</div>';
+        chatBox['text'].innerHTML += '<div>' + name + ': ' + data.msg + '</div>';
+        chatBox['text'].scrollTop = chatBox['text'].scrollHeight;
+    });
+
+	chatBox['form'].onsubmit = function(e){
+	    e.preventDefault();
+	    var input = chatBox['input'].value;
+	    if(input[0] === '/')
+	        socket.emit('eval', input.slice(1));
+	    else
+	        socket.emit('chatInput',input);
+        chatBox['input'].value = ''
+    };
+
+	socket.on('evalResponse', function (data) {
+        console.log(data);
+    })
 
 	//Mouse Click Event
 	document.onmousedown = function(event){
@@ -58,30 +94,67 @@
 		socket.emit('mouseMove', getMousPostition(event));
 	}
 
+	function initView(){
+	    initChat();
+        initCanvase();
+
+    }
+	function initChat(widthPercentage){
+        let winWidth = window.innerWidth;
+        let winHeight = window.innerHeight;
+        let chatWidth = winWidth*widthPercentage;
+	    // var chatDiv = document.getElementById('chat-div');
+	    // chatDiv.style.height = winHeight*(1-tableHeight);
+        let chatText = document.getElementById('chat-box');
+        chatText.style.height = winHeight*(1-tableHeight)*2.4/4;
+        chatText.style.width = chatWidth;
+        chatText.style.fontSize = 'small';
+        let chatInput = document.getElementById('chat-input');
+        chatInput.style.width = chatWidth;
+        let chatForm = document.getElementById('chat-form');
+        let chatBox = {text:chatText, input:chatInput, form:chatForm};
+	    return chatBox;
+    }
+    function initPlayerHandCanvas() {
+        let winWidth = window.innerWidth;
+        let winHeight = window.innerHeight;
+        let playerHandCxt = document.getElementById('player-hand').getContext("2d");
+        // playerHandCxt.canvas.width = winWidth*.5;
+        return playerHandCxt;
+    }
+	function initCanvase(id, widthPercentage, heightPercentage){
+        let winWidth = window.innerWidth;
+        let winHeight = window.innerHeight;
+        let ctx = document.getElementById(id).getContext("2d");
+        ctx.canvas.width = winWidth*widthPercentage;
+        ctx.canvas.height = winHeight*heightPercentage;
+        return ctx;
+    }
     function prepCanvase() {
+        let winWidth = window.innerWidth;
+        let winHeight = window.innerHeight;
         ctx.fillStyle = canvasColor;
-        ctx.clearRect(0,0,winWidth,winHeight);
-        ctx.fillRect(0,0,winWidth, winHeight);
+        ctx.clearRect(0,0,ctx.canvas.width,ctx.canvas.height);
+        ctx.fillRect(0,0,ctx.canvas.width,ctx.canvas.height);
     }
 
 	function getMousPostition(event){
-		var x = event.clientX;
-		var y = event.clientY;
-		pos = {x:x, y:y};
-		return pos;
+        let x = event.clientX;
+        let y = event.clientY;
+		return {x:x, y:y};
 	}
 
 	function drawCards(cards, withShadow){
-        for(i = 0; i < cards.length; i++){
-            card = cards[i];
+        for(let i = 0; i < cards.length; i++){
+            let card = cards[i];
             drawCard(card.img, card.x, card.y, card.width, card.height, card.color, withShadow);
         }
     }
 
 	function drawCard(imageSrc, x, y, cardWidth, cardHeight, outlineColor, withShadow){
-		var width = cardWidth;
-		var height = cardHeight;
-		var image = new Image();
+        let width = cardWidth;
+        let height = cardHeight;
+        let image = new Image();
 		image.src = imageSrc;
 		ctx.fillStyle = 'black';
 		// ctx.fillRect(x-(width+4)/2,y-(height+4)/2, width+4, height+4)
@@ -92,57 +165,26 @@
 	}
 
 	function drawCardOutline(xPos, yPos, cardWidth, cardHeight, color){
-		var defaultRadius = 5;
-		var outlineWeight = 4;
-		var radius = defaultRadius + outlineWeight;
+        let defaultRadius = 5;
+        let outlineWeight = 4;
+        let radius = defaultRadius + outlineWeight;
 		drawRectangle(xPos,yPos,cardWidth+outlineWeight,cardHeight+outlineWeight,radius,color,true,true,1);
-		// var tl = {
-		// 	x:xPos-cardWidth/2-outlineWeight,
-		// 	y:yPos-cardHeight/2-outlineWeight
-		// };
-		// var tr = {
-		// 	x:xPos+cardWidth/2+outlineWeight,
-		// 	y:yPos-cardHeight/2-outlineWeight
-		// };
-		// var bl = {
-		// 	x:xPos-cardWidth/2-outlineWeight,
-		// 	y:yPos+cardHeight/2+outlineWeight
-		// };
-		// var br = {
-		// 	x:xPos+cardWidth/2+outlineWeight,
-		// 	y:yPos+cardHeight/2+outlineWeight
-		// };
-		//
-		//  ctx.beginPath();
-		//  ctx.moveTo(tl.x, tl.y+radius);
-		//  ctx.lineTo(bl.x, bl.y-radius);
-		//  ctx.quadraticCurveTo(bl.x, bl.y, bl.x+radius, bl.y);
-		//  ctx.lineTo(br.x-radius, br.y);
-		//  ctx.quadraticCurveTo(br.x, br.y, br.x, br.y-radius);
-		//  ctx.lineTo(tr.x, tr.y+radius);
-		//  ctx.quadraticCurveTo(tr.x, tr.y, tr.x-radius, tr.y);
-		//  ctx.lineTo(tl.x+radius, tl.y);
-		//  ctx.quadraticCurveTo(tl.x, tl.y, tl.x, tl.y+radius);
-		//  ctx.closePath();
-		//  ctx.stroke();
-		//  ctx.fillStyle = color;
-		//  ctx.fill();
 	}
 
 	function drawRectangle(xPos, yPos, width, height, radius, color, stroke, fill, transparency){
-        var tl = {
+        let tl = {
             x:xPos-width/2,
             y:yPos-height/2
         };
-        var tr = {
+        let tr = {
             x:xPos+width/2,
             y:yPos-height/2
         };
-        var bl = {
+        let bl = {
             x:xPos-width/2,
             y:yPos+height/2
         };
-        var br = {
+        let br = {
             x:xPos+width/2,
             y:yPos+height/2
         };
